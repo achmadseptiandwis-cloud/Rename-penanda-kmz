@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KMZ Batch Rename Tool - Telecom Design</title>
+    <!-- JSZip for handling KMZ / ZIP extraction -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <!-- Leaflet CSS & JS for map preview -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- FontAwesome icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --secondary: #64748b;
+            --bg-light: #f8fafc;
+            --border-color: #e2e8f0;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --success: #10b981;
+            --danger: #ef4444;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-light);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        header {
+            background: #1e293b;
+            color: white;
+            padding: 12px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            z-index: 1000;
+        }
+
+        .header-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header-title h1 {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background-color: var(--primary);
+            color: white;
+        }
+        .btn-primary:hover { background-color: var(--primary-dark); }
+
+        .btn-success {
+            background-color: var(--success);
+            color: white;
+        }
+        .btn-success:hover { background-color: #059669; }
+
+        .btn-outline {
+            background-color: transparent;
+            color: white;
+            border: 1px solid #475569;
+        }
+        .btn-outline:hover { background-color: #334155; }
+
+        .main-layout {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* Sidebar Section */
+        .sidebar {
+            width: 480px;
+            background: white;
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            z-index: 10;
+        }
+
+        .file-dropzone {
+            padding: 20px;
+            border: 2px dashed #cbd5e1;
+            margin: 16px;
+            border-radius: 8px;
+            text-align: center;
+            background: #f1f5f9;
+            cursor: pointer;
+            transition: border-color 0.2s, background 0.2s;
+        }
+
+        .file-dropzone:hover, .file-dropzone.dragover {
+            border-color: var(--primary);
+            background: #eff6ff;
+        }
+
+        .file-dropzone i {
+            font-size: 2rem;
+            color: var(--primary);
+            margin-bottom: 8px;
+        }
+
+        .file-info {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        /* Quick Batch Rename Toolbar */
+        .batch-toolbar {
+            background: #f1f5f9;
+            padding: 12px 16px;
+            border-top: 1px solid var(--border-color);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .batch-title {
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: var(--secondary);
+            letter-spacing: 0.5px;
+        }
+
+        .batch-inputs {
+            display: flex;
+            gap: 8px;
+        }
+
+        .batch-inputs input, .batch-inputs select {
+            padding: 6px 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 0.85rem;
+        }
+
+        .batch-inputs input[type="text"] { flex: 2; }
+        .batch-inputs input[type="number"] { width: 70px; }
+        .batch-inputs select { width: 80px; }
+
+        .folder-tree {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px 16px;
+        }
+
+        .folder-group {
+            margin-bottom: 16px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .folder-header {
+            background: #f8fafc;
+            padding: 10px 12px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border-color);
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .folder-header:hover {
+            background: #f1f5f9;
+        }
+
+        .folder-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #334155;
+        }
+
+        .badge {
+            background: #e2e8f0;
+            color: #475569;
+            font-size: 0.75rem;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-weight: 600;
+        }
+
+        .item-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .item-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border-bottom: 1px solid #f1f5f9;
+            transition: background 0.15s;
+        }
+
+        .item-row:last-child {
+            border-bottom: none;
+        }
+
+        .item-row:hover {
+            background: #f8fafc;
+        }
+
+        .item-icon {
+            color: #64748b;
+            font-size: 0.9rem;
+            width: 16px;
+            text-align: center;
+        }
+
+        .item-input {
+            flex: 1;
+            padding: 6px 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 0.875rem;
+            transition: border 0.2s;
+        }
+
+        .item-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+        }
+
+        .item-actions {
+            display: flex;
+            gap: 4px;
+        }
+
+        .btn-icon {
+            background: none;
+            border: none;
+            color: var(--secondary);
+            padding: 6px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        .btn-icon:hover {
+            background: #e2e8f0;
+            color: var(--text-main);
+        }
+
+        /* Map Preview Section */
+        .map-container {
+            flex: 1;
+            position: relative;
+            background: #e5e3df;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: var(--secondary);
+            padding: 20px;
+            text-align: center;
+        }
+
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: 12px;
+            color: #cbd5e1;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="header-title">
+            <i class="fa-solid fa-map-location-dot fa-lg"></i>
+            <h1>KMZ Batch Rename Tool (Telecom Design)</h1>
+        </div>
+        <div class="header-actions">
+            <button class="btn btn-outline" onclick="document.getElementById('fileInput').click()">
+                <i class="fa-solid fa-folder-open"></i> Buka File KMZ
+            </button>
+            <button class="btn btn-success" id="downloadBtn" onclick="exportKMZ()" disabled>
+                <i class="fa-solid fa-download"></i> Simpan & Export KMZ
+            </button>
+        </div>
+    </header>
+
+    <div class="main-layout">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <input type="file" id="fileInput" accept=".kmz,.kml" style="display: none;" onchange="handleFileSelect(event)">
+            
+            <div class="file-dropzone" id="dropzone" onclick="document.getElementById('fileInput').click()">
+                <i class="fa-solid fa-file-arrow-up"></i>
+                <div style="font-weight: 600; color: #334155;">Upload File KMZ / KML</div>
+                <div class="file-info">Tarik & lepas file KMZ Anda di sini atau klik untuk memilih</div>
+            </div>
+
+            <!-- Batch Rename Box -->
+            <div class="batch-toolbar" id="batchToolbar" style="display: none;">
+                <div class="batch-title"><i class="fa-solid fa-wand-magic-sparkles"></i> Fast Auto-Rename Folder</div>
+                <div class="batch-inputs">
+                    <select id="targetFolderSelect">
+                        <option value="">-- Pilih Folder --</option>
+                    </select>
+                </div>
+                <div class="batch-inputs">
+                    <input type="text" id="prefixInput" placeholder="Prefix (misal: POL-)">
+                    <input type="number" id="startNumInput" value="1" placeholder="Mulai">
+                    <select id="padSelect">
+                        <option value="2">01</option>
+                        <option value="3" selected>001</option>
+                        <option value="4">0001</option>
+                    </select>
+                </div>
+                <button class="btn btn-primary" style="width: 100%; justify-content: center;" onclick="applyBatchRename()">
+                    <i class="fa-solid fa-bolt"></i> Terapkan Penamaan Urut
+                </button>
+            </div>
+
+            <!-- Folder & Placemark List Tree -->
+            <div class="folder-tree" id="folderTree">
+                <div class="empty-state">
+                    <i class="fa-solid fa-layer-group"></i>
+                    <p>Belum ada file KMZ yang dimuat.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Map Section -->
+        <div class="map-container">
+            <div id="map"></div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let originalZip = null;
+        let kmlDoc = null;
+        let kmlFileName = "doc.kml";
+        let originalKmzName = "edited_design.kmz";
+        let map = null;
+        let markersMap = new Map(); // Map placemark ID / element -> Leaflet Marker
+        let parsedData = []; // Structured representation of folders and placemarks
+
+        // Initialize Leaflet Map
+        function initMap() {
+            map = L.map('map').setView([-6.2088, 106.8456], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+        }
+
+        window.onload = initMap;
+
+        // Drag and Drop Handling
+        const dropzone = document.getElementById('dropzone');
+        dropzone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropzone.classList.add('dragover');
+        });
+        dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+        dropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropzone.classList.remove('dragover');
+            if (e.dataTransfer.files.length > 0) {
+                processFile(e.dataTransfer.files[0]);
+            }
+        });
+
+        function handleFileSelect(event) {
+            if (event.target.files.length > 0) {
+                processFile(event.target.files[0]);
+            }
+        }
+
+        async function processFile(file) {
+            originalKmzName = file.name;
+            const fileName = file.name.toLowerCase();
+
+            try {
+                if (fileName.endsWith('.kmz')) {
+                    const zip = new JSZip();
+                    originalZip = await zip.loadAsync(file);
+                    
+                    // Find KML file inside KMZ (usually doc.kml)
+                    let kmlFileInZip = null;
+                    zip.forEach((relativePath, zipEntry) => {
+                        if (relativePath.toLowerCase().endsWith('.kml')) {
+                            kmlFileInZip = zipEntry;
+                        }
+                    });
+
+                    if (!kmlFileInZip) {
+                        alert("File .kml tidak ditemukan di dalam KMZ ini.");
+                        return;
+                    }
+
+                    kmlFileName = kmlFileInZip.name;
+                    const kmlText = await kmlFileInZip.async("text");
+                    parseKMLText(kmlText);
+
+                } else if (fileName.endsWith('.kml')) {
+                    originalZip = null;
+                    const reader = new FileReader();
+                    reader.onload = (e) => parseKMLText(e.target.result);
+                    reader.readAsText(file);
+                } else {
+                    alert("Format file tidak didukung. Harap upload .kmz atau .kml");
+                }
+            } catch (err) {
+                console.error(err);
+                alert("Gagal membaca file: " + err.message);
+            }
+        }
+
+        function parseKMLText(kmlText) {
+            const parser = new DOMParser();
+            kmlDoc = parser.parseFromString(kmlText, "text/xml");
+
+            // Extract Folders & Placemarks
+            parsedData = [];
+            markersMap.clear();
+            if (map) {
+                map.eachLayer((layer) => {
+                    if (layer instanceof L.Marker || layer instanceof L.Polyline) {
+                        map.removeLayer(layer);
+                    }
+                });
+            }
+
+            // Get root Document or Folder
+            const rootDocument = kmlDoc.querySelector("Document") || kmlDoc.querySelector("kml");
+            
+            // Query folders
+            const folderElements = Array.from(kmlDoc.querySelectorAll("Folder"));
+
+            if (folderElements.length === 0) {
+                // If no folder, create a Virtual Folder for root Placemarks
+                const placemarks = Array.from(kmlDoc.querySelectorAll("Placemark"));
+                parsedData.push({
+                    name: "Default Folder",
+                    element: null,
+                    placemarks: placemarks.map((pm, idx) => parsePlacemark(pm, idx))
+                });
+            } else {
+                folderElements.forEach((folderEl, fIdx) => {
+                    const folderNameNode = folderEl.querySelector("name");
+                    const folderName = folderNameNode ? folderNameNode.textContent.trim() : `Folder #${fIdx + 1}`;
+                    
+                    // Get direct placemarks inside folder (or child placemarks)
+                    const placemarks = Array.from(folderEl.querySelectorAll("Placemark"));
+                    
+                    parsedData.push({
+                        name: folderName,
+                        element: folderEl,
+                        placemarks: placemarks.map((pm, idx) => parsePlacemark(pm, idx))
+                    });
+                });
+            }
+
+            renderUI();
+            document.getElementById('downloadBtn').disabled = false;
+        }
+
+        function parsePlacemark(pmEl, index) {
+            const nameNode = pmEl.querySelector("name");
+            const name = nameNode ? nameNode.textContent.trim() : `Penanda #${index + 1}`;
+            
+            // Get coordinates if point
+            let coords = null;
+            const coordNode = pmEl.querySelector("Point > coordinates");
+            if (coordNode) {
+                const rawCoords = coordNode.textContent.trim().split(',');
+                if (rawCoords.length >= 2) {
+                    const lng = parseFloat(rawCoords[0]);
+                    const lat = parseFloat(rawCoords[1]);
+                    if (!isNaN(lat) && !isNaN(lng)) {
+                        coords = { lat, lng };
+                    }
+                }
+            }
+
+            return {
+                id: 'pm_' + Math.random().toString(36).substr(2, 9),
+                name: name,
+                nameNode: nameNode,
+                element: pmEl,
+                coords: coords
+            };
+        }
+
+        function renderUI() {
+            const folderTree = document.getElementById('folderTree');
+            const targetFolderSelect = document.getElementById('targetFolderSelect');
+            folderTree.innerHTML = '';
+            targetFolderSelect.innerHTML = '<option value="">-- Pilih Folder --</option>';
+
+            if (parsedData.length > 0) {
+                document.getElementById('batchToolbar').style.display = 'flex';
+            }
+
+            const bounds = [];
+
+            parsedData.forEach((folder, fIdx) => {
+                // Populate Folder Dropdown
+                const opt = document.createElement('option');
+                opt.value = fIdx;
+                opt.textContent = `${folder.name} (${folder.placemarks.length} titik)`;
+                targetFolderSelect.appendChild(opt);
+
+                // Create Folder UI Component
+                const folderGroup = document.createElement('div');
+                folderGroup.className = 'folder-group';
+
+                const folderHeader = document.createElement('div');
+                folderHeader.className = 'folder-header';
+                folderHeader.innerHTML = `
+                    <div class="folder-title">
+                        <i class="fa-solid fa-folder-open" style="color: #f59e0b;"></i>
+                        <span>${escapeHtml(folder.name)}</span>
+                    </div>
+                    <span class="badge">${folder.placemarks.length} penanda</span>
+                `;
+
+                const itemList = document.createElement('ul');
+                itemList.className = 'item-list';
+
+                folder.placemarks.forEach((pm) => {
+                    const itemRow = document.createElement('li');
+                    itemRow.className = 'item-row';
+
+                    const icon = pm.coords ? '<i class="fa-solid fa-location-dot item-icon" style="color:#ef4444;"></i>' : '<i class="fa-solid fa-draw-polygon item-icon"></i>';
+
+                    itemRow.innerHTML = `
+                        ${icon}
+                        <input type="text" class="item-input" value="${escapeHtml(pm.name)}" oninput="updateSingleName('${pm.id}', this.value)">
+                        <div class="item-actions">
+                            <button class="btn-icon" title="Fokus di Peta" onclick="focusMarker('${pm.id}')">
+                                <i class="fa-solid fa-crosshairs"></i>
+                            </button>
+                        </div>
+                    `;
+
+                    itemList.appendChild(itemRow);
+
+                    // Add Leaflet Marker
+                    if (pm.coords) {
+                        bounds.push([pm.coords.lat, pm.coords.lng]);
+                        const marker = L.marker([pm.coords.lat, pm.coords.lng])
+                            .bindPopup(`<b>${escapeHtml(pm.name)}</b><br>Folder: ${escapeHtml(folder.name)}`);
+                        marker.addTo(map);
+                        markersMap.set(pm.id, { marker, pm });
+                    }
+                });
+
+                folderGroup.appendChild(folderHeader);
+                folderGroup.appendChild(itemList);
+                folderTree.appendChild(folderGroup);
+            });
+
+            if (bounds.length > 0) {
+                map.fitBounds(bounds, { padding: [30, 30] });
+            }
+        }
+
+        function updateSingleName(pmId, newName) {
+            for (let folder of parsedData) {
+                for (let pm of folder.placemarks) {
+                    if (pm.id === pmId) {
+                        pm.name = newName;
+                        if (pm.nameNode) {
+                            pm.nameNode.textContent = newName;
+                        } else {
+                            // If name tag didn't exist, create one
+                            const newNameEl = kmlDoc.createElement("name");
+                            newNameEl.textContent = newName;
+                            pm.element.appendChild(newNameEl);
+                            pm.nameNode = newNameEl;
+                        }
+
+                        // Update Leaflet Marker Popup
+                        if (markersMap.has(pmId)) {
+                            const { marker } = markersMap.get(pmId);
+                            marker.setPopupContent(`<b>${escapeHtml(newName)}</b><br>Folder: ${escapeHtml(folder.name)}`);
+                        }
+                        return;
+                    }
+                }
+            }
+        }
+
+        function focusMarker(pmId) {
+            if (markersMap.has(pmId)) {
+                const { marker, pm } = markersMap.get(pmId);
+                map.setView([pm.coords.lat, pm.coords.lng], 18);
+                marker.openPopup();
+            } else {
+                alert("Penanda ini tidak memiliki koordinat titik tunggal.");
+            }
+        }
+
+        function applyBatchRename() {
+            const folderIdx = document.getElementById('targetFolderSelect').value;
+            if (folderIdx === "") {
+                alert("Pilih folder target terlebih dahulu.");
+                return;
+            }
+
+            const prefix = document.getElementById('prefixInput').value;
+            let startNum = parseInt(document.getElementById('startNumInput').value) || 1;
+            const padLen = parseInt(document.getElementById('padSelect').value);
+
+            const folder = parsedData[folderIdx];
+            folder.placemarks.forEach((pm) => {
+                const numStr = String(startNum).padStart(padLen, '0');
+                const generatedName = `${prefix}${numStr}`;
+                
+                updateSingleName(pm.id, generatedName);
+                startNum++;
+            });
+
+            renderUI();
+            alert(`Berhasil memperbarui ${folder.placemarks.length} penanda di folder "${folder.name}".`);
+        }
+
+        async function exportKMZ() {
+            if (!kmlDoc) return;
+
+            const serializer = new XMLSerializer();
+            const updatedKmlText = serializer.serializeToString(kmlDoc);
+
+            if (originalZip) {
+                // Update KML inside KMZ ZIP
+                originalZip.file(kmlFileName, updatedKmlText);
+                const blob = await originalZip.generateAsync({ type: "blob" });
+                downloadBlob(blob, getExportFileName("kmz"));
+            } else {
+                // Export as standalone KML
+                const blob = new Blob([updatedKmlText], { type: "application/vnd.google-earth.kml+xml" });
+                downloadBlob(blob, getExportFileName("kml"));
+            }
+        }
+
+        function getExportFileName(ext) {
+            let baseName = originalKmzName.substring(0, originalKmzName.lastIndexOf('.')) || "design";
+            return `${baseName}_edited.${ext}`;
+        }
+
+        function downloadBlob(blob, filename) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function escapeHtml(str) {
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+        }
+    </script>
+</body>
+</html>
