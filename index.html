@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KMZ Batch Rename & Export Tool (Telecom Design)</title>
+    <title>KMZ Batch Rename & CSV Tool (Telecom Design)</title>
     
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -301,7 +301,7 @@
                     </button>
                 </div>
 
-                <!-- Fitur Baru: Export CSV Per Folder -->
+                <!-- Export CSV Per Folder Section -->
                 <div class="custom-card">
                     <div class="card-title-sub">
                         <span><i class="fa-solid fa-file-csv text-success me-1"></i> Export Folder ke CSV</span>
@@ -312,7 +312,7 @@
                         </select>
                     </div>
                     <button id="btnExportCSV" class="btn btn-outline-success w-100 fw-semibold" onclick="exportFolderToCSV()">
-                        <i class="fa-solid fa-download me-1"></i> Download CSV (Name, Lat, Long, Jalan)
+                        <i class="fa-solid fa-download me-1"></i> Download CSV (Terpisah Kolom Alamat)
                     </button>
                     <div id="exportStatus" class="mt-2 text-center"></div>
                 </div>
@@ -608,22 +608,56 @@
             }
         }
 
-        // Fitur Export CSV dengan Reverse Geocoding
+        // Fitur Export CSV dengan Pemisahan Detail Lokasi per Kolom
         const delay = ms => new Promise(res => setTimeout(res, ms));
 
         async function getAddressFromCoordinates(lat, lng) {
-            if (!lat || !lng) return "Koordinat tidak valid";
+            const emptyAddress = {
+                road: "-",
+                subdistrict: "-",
+                district: "-",
+                city: "-",
+                state: "-",
+                postcode: "-",
+                full: "-"
+            };
+
+            if (!lat || !lng) return emptyAddress;
+
             try {
                 const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`;
                 const response = await fetch(url, {
                     headers: { 'User-Agent': 'KMZBatchRenameApp/1.0' }
                 });
-                if (!response.ok) return "Lokasi tidak ditemukan";
+
+                if (response.status === 429) {
+                    await delay(1200);
+                    return emptyAddress;
+                }
+
+                if (!response.ok) return emptyAddress;
+
                 const data = await response.json();
-                return data.display_name ? `"${data.display_name.replace(/"/g, '""')}"` : "Jalan/Lokasi tidak diketahui";
+                const addr = data.address || {};
+
+                return {
+                    road: addr.road || addr.pedestrian || addr.path || "-",
+                    subdistrict: addr.village || addr.suburb || addr.neighbourhood || addr.hamlet || "-",
+                    district: addr.city_district || addr.district || addr.subdistrict || "-",
+                    city: addr.city || addr.town || addr.regency || addr.county || "-",
+                    state: addr.state || "-",
+                    postcode: addr.postcode || "-",
+                    full: data.display_name ? data.display_name : "-"
+                };
             } catch (error) {
-                return "Gagal memuat alamat";
+                return emptyAddress;
             }
+        }
+
+        // Helper untuk memformat string CSV (menghindari error jika ada tanda koma)
+        function cleanCSVField(text) {
+            if (!text) return '""';
+            return `"${text.toString().replace(/"/g, '""')}"`;
         }
 
         async function exportFolderToCSV() {
@@ -643,17 +677,20 @@
             const status = document.getElementById('exportStatus');
             btn.disabled = true;
 
-            let csvContent = "Nama Penanda,Latitude,Longitude,Lokasi / Jalan\n";
+            // Header CSV Terpisah Per Kolom
+            let csvContent = "Nama Penanda,Latitude,Longitude,Jalan,Kelurahan / Desa,Kecamatan,Kota / Kabupaten,Provinsi,Kode Pos,Alamat Lengkap\n";
 
             for (let i = 0; i < targetItems.length; i++) {
                 const item = targetItems[i];
                 status.textContent = `Memproses lokasi (${i + 1}/${targetItems.length})...`;
 
-                const address = await getAddressFromCoordinates(item.lat, item.lng);
-                csvContent += `"${item.name}",${item.lat || ''},${item.lng || ''},${address}\n`;
+                const addr = await getAddressFromCoordinates(item.lat, item.lng);
+
+                // Gabungkan baris data CSV
+                csvContent += `${cleanCSVField(item.name)},${item.lat || ''},${item.lng || ''},${cleanCSVField(addr.road)},${cleanCSVField(addr.subdistrict)},${cleanCSVField(addr.district)},${cleanCSVField(addr.city)},${cleanCSVField(addr.state)},${cleanCSVField(addr.postcode)},${cleanCSVField(addr.full)}\n`;
 
                 if (i < targetItems.length - 1) {
-                    await delay(1000); // Delay 1 detik untuk mematuhi rate limit OSM
+                    await delay(350);
                 }
             }
 
