@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KMZ Batch Rename Tool (Telecom Design)</title>
+    <title>KMZ Batch Rename & Export Tool (Telecom Design)</title>
     
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -46,6 +46,7 @@
             color: var(--text-primary);
         }
 
+        /* Header Navbar */
         .navbar-custom {
             background-color: #0f172a;
             color: white;
@@ -60,6 +61,7 @@
             letter-spacing: -0.02em;
         }
 
+        /* Layout Container */
         .main-container {
             display: flex;
             flex: 1;
@@ -67,8 +69,9 @@
             position: relative;
         }
 
+        /* Sidebar Styling */
         .sidebar {
-            width: 400px;
+            width: 410px;
             background-color: var(--bg-main);
             border-right: 1px solid var(--border-color);
             display: flex;
@@ -85,6 +88,7 @@
             gap: 16px;
         }
 
+        /* Map Styling */
         .map-container {
             flex: 1;
             position: relative;
@@ -96,6 +100,7 @@
             height: 100%;
         }
 
+        /* Card Panels */
         .custom-card {
             background: var(--bg-surface);
             border: 1px solid var(--border-color);
@@ -104,6 +109,7 @@
             box-shadow: var(--card-shadow);
         }
 
+        /* Upload Box */
         .upload-box {
             border: 2px dashed #93c5fd;
             border-radius: 12px;
@@ -132,6 +138,7 @@
             justify-content: space-between;
         }
 
+        /* Placemark List Items */
         .folder-header {
             font-weight: 600;
             color: var(--text-primary);
@@ -186,6 +193,7 @@
             outline: none;
         }
 
+        /* Buttons & Form Inputs */
         .btn-primary {
             background-color: var(--primary-accent);
             border-color: var(--primary-accent);
@@ -222,6 +230,12 @@
             color: var(--primary-accent);
             background-color: #f1f5f9;
         }
+
+        #exportStatus {
+            font-size: 0.75rem;
+            color: #0284c7;
+            font-weight: 500;
+        }
     </style>
 </head>
 <body>
@@ -230,7 +244,7 @@
     <div class="navbar-custom d-flex justify-content-between align-items-center">
         <div class="d-flex align-items-center gap-2">
             <i class="fa-solid fa-layer-group text-primary fa-lg"></i>
-            <span class="navbar-brand-title">KMZ Batch Rename Tool</span>
+            <span class="navbar-brand-title">KMZ Batch Rename & CSV Tool</span>
         </div>
         <div class="d-flex gap-2">
             <button class="btn btn-sm btn-outline-danger rounded-2 px-3" onclick="resetFileWorkspace()">
@@ -285,6 +299,22 @@
                     <button class="btn btn-primary w-100 fw-semibold" onclick="applyBatchRename()">
                         <i class="fa-solid fa-wand-magic-sparkles me-1"></i> Terapkan Penamaan
                     </button>
+                </div>
+
+                <!-- Fitur Baru: Export CSV Per Folder -->
+                <div class="custom-card">
+                    <div class="card-title-sub">
+                        <span><i class="fa-solid fa-file-csv text-success me-1"></i> Export Folder ke CSV</span>
+                    </div>
+                    <div class="mb-2">
+                        <select id="csvFolderSelect" class="form-select">
+                            <option value="">-- Pilih Folder untuk CSV --</option>
+                        </select>
+                    </div>
+                    <button id="btnExportCSV" class="btn btn-outline-success w-100 fw-semibold" onclick="exportFolderToCSV()">
+                        <i class="fa-solid fa-download me-1"></i> Download CSV (Name, Lat, Long, Jalan)
+                    </button>
+                    <div id="exportStatus" class="mt-2 text-center"></div>
                 </div>
 
                 <!-- Placemark List Output -->
@@ -349,7 +379,9 @@
             placemarkDataList = [];
             document.getElementById('kmzFileInput').value = '';
             document.getElementById('folderSelect').innerHTML = '<option value="">-- Pilih Folder Target --</option>';
+            document.getElementById('csvFolderSelect').innerHTML = '<option value="">-- Pilih Folder untuk CSV --</option>';
             document.getElementById('prefixInput').value = '';
+            document.getElementById('exportStatus').textContent = '';
             document.getElementById('placemarkTree').innerHTML = `
                 <div class="text-center text-secondary py-4" style="font-size: 0.875rem;">
                     Belum ada file yang diunggah.
@@ -392,7 +424,10 @@
 
             placemarkDataList = [];
             const folderSelect = document.getElementById('folderSelect');
+            const csvFolderSelect = document.getElementById('csvFolderSelect');
+            
             folderSelect.innerHTML = '<option value="">-- Pilih Folder Target --</option>';
+            csvFolderSelect.innerHTML = '<option value="">-- Pilih Folder untuk CSV --</option>';
 
             const folders = parsedKmlDoc.querySelectorAll('Folder');
             let folderIndex = 0;
@@ -400,7 +435,9 @@
             if (folders.length === 0) {
                 const placemarks = parsedKmlDoc.querySelectorAll('Placemark');
                 processPlacemarkNodes(placemarks, "Folder Utama", "folder_0");
-                folderSelect.innerHTML += `<option value="folder_0">Folder Utama (${placemarks.length} penanda)</option>`;
+                const optHtml = `<option value="folder_0">Folder Utama (${placemarks.length} penanda)</option>`;
+                folderSelect.innerHTML += optHtml;
+                csvFolderSelect.innerHTML += optHtml;
             } else {
                 folders.forEach((folder) => {
                     const folderNameNode = folder.querySelector('name');
@@ -410,7 +447,9 @@
                     const placemarks = Array.from(folder.children).filter(node => node.tagName === 'Placemark');
                     if (placemarks.length > 0) {
                         processPlacemarkNodes(placemarks, folderName, folderId);
-                        folderSelect.innerHTML += `<option value="${folderId}">${folderName} (${placemarks.length} penanda)</option>`;
+                        const optHtml = `<option value="${folderId}">${folderName} (${placemarks.length} penanda)</option>`;
+                        folderSelect.innerHTML += optHtml;
+                        csvFolderSelect.innerHTML += optHtml;
                     }
                     folderIndex++;
                 });
@@ -425,13 +464,26 @@
                 const nameNode = pm.querySelector('name');
                 const currentName = nameNode ? nameNode.textContent : `Placemark ${idx + 1}`;
                 
+                // Ambil Koordinat
+                let lat = null, lng = null;
+                const pointNode = pm.querySelector('Point coordinates');
+                if (pointNode) {
+                    const coords = pointNode.textContent.trim().split(',');
+                    if (coords.length >= 2) {
+                        lng = parseFloat(coords[0]);
+                        lat = parseFloat(coords[1]);
+                    }
+                }
+                
                 placemarkDataList.push({
                     id: `pm_${folderId}_${idx}`,
                     node: pm,
                     nameNode: nameNode,
                     folderId: folderId,
                     folderName: folderName,
-                    name: currentName
+                    name: currentName,
+                    lat: lat,
+                    lng: lng
                 });
             });
         }
@@ -466,7 +518,7 @@
                         <div class="placemark-item">
                             <i class="fa-solid fa-location-dot text-danger me-2"></i>
                             <input type="text" value="${item.name}" onchange="updateSingleName('${item.id}', this.value)">
-                            <i class="fa-solid fa-crosshairs btn-focus-map ms-1" title="Fokus Lokasi" onclick="focusMapItem('${item.id}')"></i>
+                            <i class="fa-solid fa-crosshairs btn-focus-map ms-1" title="Fokus Lokasi" onclick="focusMapItem(${item.lat}, ${item.lng})"></i>
                         </div>
                     `;
                     container.innerHTML += itemHtml;
@@ -489,6 +541,12 @@
 
             if (geojsonGroup.getBounds().isValid()) {
                 map.fitBounds(geojsonGroup.getBounds(), { padding: [30, 30] });
+            }
+        }
+
+        function focusMapItem(lat, lng) {
+            if (lat && lng) {
+                map.setView([lat, lng], 17);
             }
         }
 
@@ -550,6 +608,75 @@
             }
         }
 
+        // Fitur Export CSV dengan Reverse Geocoding
+        const delay = ms => new Promise(res => setTimeout(res, ms));
+
+        async function getAddressFromCoordinates(lat, lng) {
+            if (!lat || !lng) return "Koordinat tidak valid";
+            try {
+                const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`;
+                const response = await fetch(url, {
+                    headers: { 'User-Agent': 'KMZBatchRenameApp/1.0' }
+                });
+                if (!response.ok) return "Lokasi tidak ditemukan";
+                const data = await response.json();
+                return data.display_name ? `"${data.display_name.replace(/"/g, '""')}"` : "Jalan/Lokasi tidak diketahui";
+            } catch (error) {
+                return "Gagal memuat alamat";
+            }
+        }
+
+        async function exportFolderToCSV() {
+            const selectedFolderId = document.getElementById('csvFolderSelect').value;
+            if (!selectedFolderId) {
+                alert("Pilih folder yang ingin diexport ke CSV terlebih dahulu!");
+                return;
+            }
+
+            const targetItems = placemarkDataList.filter(item => item.folderId === selectedFolderId);
+            if (targetItems.length === 0) {
+                alert("Folder ini tidak memiliki penanda!");
+                return;
+            }
+
+            const btn = document.getElementById('btnExportCSV');
+            const status = document.getElementById('exportStatus');
+            btn.disabled = true;
+
+            let csvContent = "Nama Penanda,Latitude,Longitude,Lokasi / Jalan\n";
+
+            for (let i = 0; i < targetItems.length; i++) {
+                const item = targetItems[i];
+                status.textContent = `Memproses lokasi (${i + 1}/${targetItems.length})...`;
+
+                const address = await getAddressFromCoordinates(item.lat, item.lng);
+                csvContent += `"${item.name}",${item.lat || ''},${item.lng || ''},${address}\n`;
+
+                if (i < targetItems.length - 1) {
+                    await delay(1000); // Delay 1 detik untuk mematuhi rate limit OSM
+                }
+            }
+
+            const folderName = targetItems[0].folderName || "Folder";
+            downloadCSV(csvContent, `Export_${folderName.replace(/\s+/g, '_')}.csv`);
+
+            status.textContent = "Export CSV Selesai!";
+            btn.disabled = false;
+        }
+
+        function downloadCSV(csvContent, filename) {
+            const blob = new Blob(["\ufeff" + csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", filename);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // Export KMZ
         async function exportKMZ() {
             if (!parsedKmlDoc) {
                 alert("Tidak ada data KMZ/KML yang diunggah!");
