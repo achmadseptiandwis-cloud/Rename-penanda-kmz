@@ -4,6 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>KMZ Batch Rename Tool (Telecom Design)</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
     <!-- Leaflet CSS for Map -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <!-- Bootstrap CSS -->
@@ -11,61 +17,82 @@
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <!-- JS Libraries: JSZip, toGeoJSON, tokml, Leaflet -->
+    <!-- JS Libraries: JSZip, toGeoJSON, Leaflet -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tmcw/togeojson@5.8.1/dist/togeojson.umd.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/tokml@0.4.1/tokml.js"></script>
 
     <style>
         :root {
-            --bg-dark: #1e2530;
-            --bg-panel: #f8f9fa;
-            --primary-blue: #0d6efd;
-            --success-green: #198754;
+            --bg-main: #f4f6f9;
+            --bg-surface: #ffffff;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --primary-accent: #2563eb;
+            --primary-hover: #1d4ed8;
+            --border-color: #e2e8f0;
+            --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
             margin: 0;
             padding: 0;
             height: 100vh;
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            background-color: var(--bg-main);
+            color: var(--text-primary);
         }
 
+        /* Header Navbar */
         .navbar-custom {
-            background-color: var(--bg-dark);
+            background-color: #0f172a;
             color: white;
-            padding: 10px 20px;
+            padding: 12px 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            z-index: 1001;
         }
 
+        .navbar-brand-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+        }
+
+        /* Layout Container */
         .main-container {
             display: flex;
             flex: 1;
             overflow: hidden;
+            position: relative;
         }
 
+        /* Sidebar Styling */
         .sidebar {
-            width: 380px;
-            background-color: #ffffff;
-            border-right: 1px solid #dee2e6;
+            width: 400px;
+            background-color: var(--bg-main);
+            border-right: 1px solid var(--border-color);
             display: flex;
             flex-direction: column;
             z-index: 1000;
-            box-shadow: 2px 0 5px rgba(0,0,0,0.05);
         }
 
         .sidebar-content {
-            padding: 15px;
+            padding: 20px;
             overflow-y: auto;
             flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
         }
 
+        /* Map Styling */
         .map-container {
             flex: 1;
             position: relative;
+            background-color: #e5e7eb;
         }
 
         #map {
@@ -73,69 +100,135 @@
             height: 100%;
         }
 
+        /* Card Panels */
+        .custom-card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: var(--card-shadow);
+        }
+
+        /* Upload Box */
         .upload-box {
-            border: 2px dashed #0d6efd;
-            border-radius: 8px;
+            border: 2px dashed #93c5fd;
+            border-radius: 12px;
             padding: 20px;
             text-align: center;
-            background-color: #f0f7ff;
+            background-color: #eff6ff;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.2s ease-in-out;
         }
 
         .upload-box:hover {
-            background-color: #e1f0ff;
+            background-color: #dbeafe;
+            border-color: var(--primary-accent);
+            transform: translateY(-1px);
         }
 
-        .rename-panel {
-            background-color: #f1f3f5;
-            border-radius: 8px;
-            padding: 12px;
-            margin-top: 15px;
-            border: 1px solid #e9ecef;
+        .card-title-sub {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* Placemark List Items */
+        .folder-header {
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-top: 10px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.875rem;
+        }
+
+        .badge-count {
+            font-size: 0.75rem;
+            background-color: #e2e8f0;
+            color: #475569;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-weight: 500;
         }
 
         .placemark-item {
             display: flex;
             align-items: center;
-            padding: 6px 10px;
-            background-color: white;
-            border: 1px solid #dee2e6;
-            border-radius: 4px;
-            margin-bottom: 6px;
-            font-size: 0.85rem;
+            padding: 8px 12px;
+            background-color: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            font-size: 0.875rem;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+            transition: all 0.15s ease;
+        }
+
+        .placemark-item:hover {
+            border-color: #cbd5e1;
+            box-shadow: var(--card-shadow);
         }
 
         .placemark-item input {
             border: 1px solid transparent;
             background: transparent;
             font-weight: 500;
+            color: var(--text-primary);
             width: 100%;
+            padding: 2px 6px;
+            border-radius: 4px;
         }
 
         .placemark-item input:focus {
-            border-bottom: 1px solid var(--primary-blue);
-            outline: none;
+            border-color: var(--primary-accent);
             background-color: #fff;
+            outline: none;
         }
 
-        .folder-header {
-            font-weight: 600;
-            color: #495057;
-            margin-top: 15px;
-            margin-bottom: 8px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 0.9rem;
+        /* Buttons & Form Inputs */
+        .btn-primary {
+            background-color: var(--primary-accent);
+            border-color: var(--primary-accent);
+            border-radius: 8px;
+            padding: 8px 16px;
+            font-weight: 500;
         }
 
-        .badge-count {
-            font-size: 0.75rem;
-            background-color: #e9ecef;
-            color: #495057;
-            padding: 2px 8px;
-            border-radius: 12px;
+        .btn-primary:hover {
+            background-color: var(--primary-hover);
+            border-color: var(--primary-hover);
+        }
+
+        .form-control, .form-select {
+            border-radius: 8px;
+            border-color: var(--border-color);
+            font-size: 0.875rem;
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: var(--primary-accent);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .btn-focus-map {
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 4px 6px;
+            border-radius: 4px;
+            transition: color 0.2s;
+        }
+
+        .btn-focus-map:hover {
+            color: var(--primary-accent);
+            background-color: #f1f5f9;
         }
     </style>
 </head>
@@ -144,15 +237,15 @@
     <!-- Header / Navbar -->
     <div class="navbar-custom d-flex justify-content-between align-items-center">
         <div class="d-flex align-items-center gap-2">
-            <i class="fa-solid fa-map-location-dot fa-lg text-primary"></i>
-            <h5 class="m-0 font-weight-bold">KMZ Batch Rename Tool (Telecom Design)</h5>
+            <i class="fa-solid fa-layer-group text-primary fa-lg"></i>
+            <span class="navbar-brand-title">KMZ Batch Rename Tool</span>
         </div>
         <div class="d-flex gap-2">
-            <button class="btn btn-sm btn-outline-light" onclick="document.getElementById('kmzFileInput').click()">
-                <i class="fa-solid fa-folder-open me-1"></i> Buka File KMZ
+            <button class="btn btn-sm btn-outline-light rounded-2 px-3" onclick="document.getElementById('kmzFileInput').click()">
+                <i class="fa-solid fa-folder-open me-1"></i> Buka File
             </button>
-            <button class="btn btn-sm btn-success" onclick="exportKMZ()">
-                <i class="fa-solid fa-download me-1"></i> Simpan & Export KMZ
+            <button class="btn btn-sm btn-success rounded-2 px-3 fw-medium" onclick="exportKMZ()">
+                <i class="fa-solid fa-file-export me-1"></i> Export KMZ
             </button>
         </div>
     </div>
@@ -162,30 +255,31 @@
         <!-- Sidebar -->
         <div class="sidebar">
             <div class="sidebar-content">
+                
                 <!-- Upload Section -->
                 <input type="file" id="kmzFileInput" accept=".kmz,.kml" style="display: none;" onchange="handleFileSelect(event)">
                 <div class="upload-box" onclick="document.getElementById('kmzFileInput').click()">
                     <i class="fa-solid fa-cloud-arrow-up fa-2x text-primary mb-2"></i>
-                    <h6 class="m-0 fw-bold">Upload File KMZ / KML</h6>
-                    <small class="text-muted">Tarik & lepas file KMZ Anda di sini atau klik untuk memilih</small>
+                    <h6 class="m-0 fw-semibold text-dark">Upload File KMZ / KML</h6>
+                    <small class="text-secondary">Klik atau seret file Anda ke area ini</small>
                 </div>
 
                 <!-- Fast Auto-Rename Folder Section -->
-                <div class="rename-panel">
-                    <div class="fw-bold text-uppercase text-secondary mb-2" style="font-size: 0.75rem;">
-                        <i class="fa-solid fa-bolt text-warning me-1"></i> Fast Auto-Rename Folder
+                <div class="custom-card">
+                    <div class="card-title-sub">
+                        <i class="fa-solid fa-bolt text-warning"></i> Fast Auto-Rename
                     </div>
                     
                     <div class="mb-2">
-                        <select id="folderSelect" class="form-select form-select-sm">
-                            <option value="">-- Pilih Folder --</option>
+                        <select id="folderSelect" class="form-select">
+                            <option value="">-- Pilih Folder Target --</option>
                         </select>
                     </div>
 
-                    <div class="input-group input-group-sm mb-2">
+                    <div class="input-group mb-3">
                         <input type="text" id="prefixInput" class="form-control" placeholder="Prefix (misal: FDI - )">
                         <input type="number" id="startNumInput" class="form-control" value="1" style="max-width: 60px;" min="0">
-                        <select id="numberFormatSelect" class="form-select" style="max-width: 110px;">
+                        <select id="numberFormatSelect" class="form-select" style="max-width: 120px;">
                             <option value="none">Tanpa Nomor</option>
                             <option value="001" selected>001</option>
                             <option value="01">01</option>
@@ -193,17 +287,23 @@
                         </select>
                     </div>
 
-                    <button class="btn btn-primary btn-sm w-100 fw-semibold" onclick="applyBatchRename()">
-                        <i class="fa-solid fa-wand-magic-sparkles me-1"></i> Terapkan Penamaan Urut
+                    <button class="btn btn-primary w-100 fw-semibold" onclick="applyBatchRename()">
+                        <i class="fa-solid fa-wand-magic-sparkles me-1"></i> Terapkan Penamaan
                     </button>
                 </div>
 
                 <!-- Placemark List Output -->
-                <div id="placemarkTree" class="mt-3">
-                    <div class="text-center text-muted py-4" style="font-size: 0.85rem;">
-                        Belum ada file yang diunggah.
+                <div class="custom-card flex-grow-1" style="overflow-y: auto;">
+                    <div class="card-title-sub">
+                        <i class="fa-solid fa-list-check"></i> Daftar Penanda (Placemark)
+                    </div>
+                    <div id="placemarkTree">
+                        <div class="text-center text-secondary py-4" style="font-size: 0.875rem;">
+                            Belum ada file yang diunggah.
+                        </div>
                     </div>
                 </div>
+
             </div>
         </div>
 
@@ -216,7 +316,11 @@
     <!-- JavaScript Application Logic -->
     <script>
         // Inisialisasi Peta Leaflet
-        const map = L.map('map').setView([-2.548926, 118.014863], 5); // Default Indonesia
+        const map = L.map('map', { zoomControl: false }).setView([-2.548926, 118.014863], 5);
+        
+        // Custom Zoom Control Position
+        L.control.zoom({ position: 'topright' }).addTo(map);
+
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
             attribution: '&copy; OpenStreetMap contributors'
@@ -228,7 +332,7 @@
         let kmlFileName = "doc.kml";
         let placemarkDataList = [];
 
-        // Dynamic Input Enable/Disable when "Tanpa Nomor" selected
+        // Enable/Disable Input Angka saat opsi "Tanpa Nomor" dipilih
         document.getElementById('numberFormatSelect').addEventListener('change', function(e) {
             const startNumInput = document.getElementById('startNumInput');
             if (e.target.value === 'none') {
@@ -276,16 +380,14 @@
 
             placemarkDataList = [];
             const folderSelect = document.getElementById('folderSelect');
-            folderSelect.innerHTML = '<option value="">-- Pilih Folder --</option>';
+            folderSelect.innerHTML = '<option value="">-- Pilih Folder Target --</option>';
 
             const folders = parsedKmlDoc.querySelectorAll('Folder');
-            
-            // If no folder exists, use main document as root
             let folderIndex = 0;
 
             if (folders.length === 0) {
                 const placemarks = parsedKmlDoc.querySelectorAll('Placemark');
-                processPlacemarkNodes(placemarks, "Utama", "folder_0");
+                processPlacemarkNodes(placemarks, "Folder Utama", "folder_0");
                 folderSelect.innerHTML += `<option value="folder_0">Folder Utama (${placemarks.length} penanda)</option>`;
             } else {
                 folders.forEach((folder) => {
@@ -293,7 +395,6 @@
                     const folderName = folderNameNode ? folderNameNode.textContent : `Folder ${folderIndex + 1}`;
                     const folderId = `folder_${folderIndex}`;
                     
-                    // Direct placemarks in this folder
                     const placemarks = Array.from(folder.children).filter(node => node.tagName === 'Placemark');
                     if (placemarks.length > 0) {
                         processPlacemarkNodes(placemarks, folderName, folderId);
@@ -343,7 +444,7 @@
                 const folderHtml = `
                     <div class="folder-header">
                         <span><i class="fa-solid fa-folder text-warning me-1"></i> ${group.name}</span>
-                        <span class="badge-count">${group.items.length} penanda</span>
+                        <span class="badge-count">${group.items.length}</span>
                     </div>
                 `;
                 container.innerHTML += folderHtml;
@@ -353,7 +454,7 @@
                         <div class="placemark-item">
                             <i class="fa-solid fa-location-dot text-danger me-2"></i>
                             <input type="text" value="${item.name}" onchange="updateSingleName('${item.id}', this.value)">
-                            <i class="fa-solid fa-crosshairs text-muted ms-1" style="cursor:pointer;" title="Fokus Lokasi" onclick="focusMapItem('${item.id}')"></i>
+                            <i class="fa-solid fa-crosshairs btn-focus-map ms-1" title="Fokus Lokasi" onclick="focusMapItem('${item.id}')"></i>
                         </div>
                     `;
                     container.innerHTML += itemHtml;
@@ -375,7 +476,7 @@
             geojsonGroup.addLayer(layer);
 
             if (geojsonGroup.getBounds().isValid()) {
-                map.fitBounds(geojsonGroup.getBounds());
+                map.fitBounds(geojsonGroup.getBounds(), { padding: [30, 30] });
             }
         }
 
@@ -388,7 +489,7 @@
             const format = document.getElementById('numberFormatSelect').value;
 
             if (!selectedFolderId) {
-                alert("Pilih folder terlebih dahulu!");
+                alert("Pilih folder target terlebih dahulu!");
                 return;
             }
 
@@ -398,10 +499,8 @@
                 let newName = "";
 
                 if (format === 'none') {
-                    // Jika memilih "Tanpa Nomor", nama hanya menggunakan Prefix saja
                     newName = prefix;
                 } else {
-                    // Format Penomoran
                     const currentNum = startNum + index;
                     let formattedNum = currentNum.toString();
 
@@ -440,7 +539,7 @@
             }
         }
 
-        // Export/Download File KMZ
+        // Export KMZ
         async function exportKMZ() {
             if (!parsedKmlDoc) {
                 alert("Tidak ada data KMZ/KML yang diunggah!");
@@ -453,7 +552,6 @@
             const zip = new JSZip();
             zip.file(kmlFileName, kmlString);
 
-            // Copy assets if originally KMZ
             if (kmzZipArchive) {
                 for (let filename in kmzZipArchive.files) {
                     if (filename !== kmlFileName && !kmzZipArchive.files[filename].dir) {
