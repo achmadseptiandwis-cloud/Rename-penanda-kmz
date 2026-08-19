@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KMZ Batch Rename & CSV Tool (Telecom Design)</title>
+    <title>KMZ Batch Rename & GIS CSV Suite</title>
     
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     
     <!-- Leaflet CSS for Map -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -24,18 +24,19 @@
 
     <style>
         :root {
-            --bg-main: #f4f6f9;
+            --bg-main: #f8fafc;
             --bg-surface: #ffffff;
-            --text-primary: #1e293b;
+            --text-primary: #0f172a;
             --text-secondary: #64748b;
             --primary-accent: #2563eb;
             --primary-hover: #1d4ed8;
             --border-color: #e2e8f0;
-            --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+            --card-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+            --card-shadow-hover: 0 4px 12px 0 rgba(0, 0, 0, 0.08);
         }
 
         body {
-            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
             margin: 0;
             padding: 0;
             height: 100vh;
@@ -46,22 +47,26 @@
             color: var(--text-primary);
         }
 
-        /* Header Navbar */
+        /* Top Header Navigation */
         .navbar-custom {
             background-color: #0f172a;
             color: white;
-            padding: 12px 24px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            padding: 10px 24px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             z-index: 1001;
         }
 
-        .navbar-brand-title {
-            font-size: 1.1rem;
+        .brand-badge {
+            background-color: rgba(37, 99, 235, 0.2);
+            color: #60a5fa;
+            font-size: 0.7rem;
+            padding: 2px 8px;
+            border-radius: 6px;
             font-weight: 600;
-            letter-spacing: -0.02em;
+            text-transform: uppercase;
         }
 
-        /* Layout Container */
+        /* Layout Main Grid */
         .main-container {
             display: flex;
             flex: 1;
@@ -69,9 +74,9 @@
             position: relative;
         }
 
-        /* Sidebar Styling */
+        /* Sidebar Container */
         .sidebar {
-            width: 410px;
+            width: 430px;
             background-color: var(--bg-main);
             border-right: 1px solid var(--border-color);
             display: flex;
@@ -80,24 +85,12 @@
         }
 
         .sidebar-content {
-            padding: 20px;
+            padding: 18px;
             overflow-y: auto;
             flex: 1;
             display: flex;
             flex-direction: column;
-            gap: 16px;
-        }
-
-        /* Map Styling */
-        .map-container {
-            flex: 1;
-            position: relative;
-            background-color: #e5e7eb;
-        }
-
-        #map {
-            width: 100%;
-            height: 100%;
+            gap: 14px;
         }
 
         /* Card Panels */
@@ -107,30 +100,33 @@
             border-radius: 12px;
             padding: 16px;
             box-shadow: var(--card-shadow);
+            transition: box-shadow 0.2s ease;
         }
 
-        /* Upload Box */
-        .upload-box {
-            border: 2px dashed #93c5fd;
-            border-radius: 12px;
-            padding: 20px;
-            text-align: center;
+        .custom-card:hover {
+            box-shadow: var(--card-shadow-hover);
+        }
+
+        /* Module Step Number */
+        .step-tag {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 20px;
+            height: 20px;
             background-color: #eff6ff;
-            cursor: pointer;
-            transition: all 0.2s ease-in-out;
-        }
-
-        .upload-box:hover {
-            background-color: #dbeafe;
-            border-color: var(--primary-accent);
-            transform: translateY(-1px);
+            color: var(--primary-accent);
+            border-radius: 50%;
+            font-size: 0.7rem;
+            font-weight: 700;
+            margin-right: 6px;
         }
 
         .card-title-sub {
-            font-size: 0.75rem;
+            font-size: 0.8rem;
             font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 0.05em;
+            letter-spacing: 0.03em;
             color: var(--text-secondary);
             margin-bottom: 12px;
             display: flex;
@@ -138,43 +134,71 @@
             justify-content: space-between;
         }
 
-        /* Placemark List Items */
+        /* Upload Area Dropzone */
+        .upload-box {
+            border: 2px dashed #cbd5e1;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            background-color: #ffffff;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .upload-box:hover {
+            background-color: #f1f5f9;
+            border-color: var(--primary-accent);
+        }
+
+        /* Input Controls */
+        .form-control, .form-select {
+            border-radius: 8px;
+            border-color: var(--border-color);
+            font-size: 0.85rem;
+            padding: 8px 12px;
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: var(--primary-accent);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+        }
+
+        /* Placemark List */
         .folder-header {
             font-weight: 600;
             color: var(--text-primary);
             margin-top: 10px;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            font-size: 0.875rem;
+            font-size: 0.85rem;
         }
 
         .badge-count {
-            font-size: 0.75rem;
-            background-color: #e2e8f0;
+            font-size: 0.7rem;
+            background-color: #f1f5f9;
             color: #475569;
-            padding: 2px 10px;
-            border-radius: 12px;
-            font-weight: 500;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-weight: 600;
         }
 
         .placemark-item {
             display: flex;
             align-items: center;
-            padding: 8px 12px;
-            background-color: var(--bg-surface);
+            padding: 6px 10px;
+            background-color: #ffffff;
             border: 1px solid var(--border-color);
             border-radius: 8px;
-            margin-bottom: 8px;
-            font-size: 0.875rem;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+            margin-bottom: 6px;
+            font-size: 0.85rem;
             transition: all 0.15s ease;
         }
 
         .placemark-item:hover {
-            border-color: #cbd5e1;
-            box-shadow: var(--card-shadow);
+            border-color: #94a3b8;
+            background-color: #f8fafc;
         }
 
         .placemark-item input {
@@ -193,68 +217,55 @@
             outline: none;
         }
 
-        /* Buttons & Form Inputs */
-        .btn-primary {
-            background-color: var(--primary-accent);
-            border-color: var(--primary-accent);
-            border-radius: 8px;
-            padding: 8px 16px;
-            font-weight: 500;
-        }
-
-        .btn-primary:hover {
-            background-color: var(--primary-hover);
-            border-color: var(--primary-hover);
-        }
-
-        .form-control, .form-select {
-            border-radius: 8px;
-            border-color: var(--border-color);
-            font-size: 0.875rem;
-        }
-
-        .form-control:focus, .form-select:focus {
-            border-color: var(--primary-accent);
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-        }
-
         .btn-focus-map {
             color: var(--text-secondary);
             cursor: pointer;
-            padding: 4px 6px;
+            padding: 4px;
             border-radius: 4px;
             transition: color 0.2s;
         }
 
         .btn-focus-map:hover {
             color: var(--primary-accent);
-            background-color: #f1f5f9;
         }
 
-        #exportStatus {
-            font-size: 0.75rem;
-            color: #0284c7;
-            font-weight: 500;
+        /* Map Area */
+        .map-container {
+            flex: 1;
+            position: relative;
+            background-color: #e2e8f0;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Progress Bar */
+        .progress {
+            height: 6px;
+            border-radius: 10px;
         }
     </style>
 </head>
 <body>
 
-    <!-- Header / Navbar -->
+    <!-- Header Navbar -->
     <div class="navbar-custom d-flex justify-content-between align-items-center">
         <div class="d-flex align-items-center gap-2">
             <i class="fa-solid fa-layer-group text-primary fa-lg"></i>
-            <span class="navbar-brand-title">KMZ Batch Rename & CSV Tool</span>
+            <span class="fw-bold fs-6">KMZ Batch Manager</span>
+            <span class="brand-badge ms-1">Telecom Suite</span>
         </div>
         <div class="d-flex gap-2">
-            <button class="btn btn-sm btn-outline-danger rounded-2 px-3" onclick="resetFileWorkspace()">
-                <i class="fa-solid fa-trash-can me-1"></i> Hapus File
+            <button class="btn btn-sm btn-outline-danger px-3 rounded-2" onclick="resetFileWorkspace()">
+                <i class="fa-solid fa-rotate-left me-1"></i> Reset
             </button>
-            <button class="btn btn-sm btn-outline-light rounded-2 px-3" onclick="document.getElementById('kmzFileInput').click()">
+            <button class="btn btn-sm btn-outline-light px-3 rounded-2" onclick="document.getElementById('kmzFileInput').click()">
                 <i class="fa-solid fa-folder-open me-1"></i> Buka File
             </button>
-            <button class="btn btn-sm btn-success rounded-2 px-3 fw-medium" onclick="exportKMZ()">
-                <i class="fa-solid fa-file-export me-1"></i> Export KMZ
+            <button class="btn btn-sm btn-primary px-3 rounded-2 fw-semibold" onclick="exportKMZ()">
+                <i class="fa-solid fa-download me-1"></i> Export KMZ
             </button>
         </div>
     </div>
@@ -265,46 +276,59 @@
         <div class="sidebar">
             <div class="sidebar-content">
                 
-                <!-- Upload Section -->
+                <!-- STEP 1: Upload Box -->
                 <input type="file" id="kmzFileInput" accept=".kmz,.kml" style="display: none;" onchange="handleFileSelect(event)">
                 <div class="upload-box" onclick="document.getElementById('kmzFileInput').click()">
-                    <i class="fa-solid fa-cloud-arrow-up fa-2x text-primary mb-2"></i>
-                    <h6 class="m-0 fw-semibold text-dark">Upload File KMZ / KML</h6>
-                    <small class="text-secondary">Klik atau seret file Anda ke area ini</small>
+                    <div class="mb-2">
+                        <i class="fa-solid fa-cloud-arrow-up fa-2x text-primary"></i>
+                    </div>
+                    <h6 class="m-0 fw-bold text-dark" style="font-size: 0.9rem;">1. Unggah File KMZ / KML</h6>
+                    <small class="text-secondary" style="font-size: 0.75rem;">Klik di sini atau seret file Anda ke dalam kotak</small>
                 </div>
 
-                <!-- Fast Auto-Rename Folder Section -->
+                <!-- STEP 2: Fast Auto-Rename -->
                 <div class="custom-card">
                     <div class="card-title-sub">
-                        <span><i class="fa-solid fa-bolt text-warning me-1"></i> Fast Auto-Rename</span>
+                        <span><span class="step-tag">2</span> Penamaan Massal (Auto-Rename)</span>
                     </div>
                     
                     <div class="mb-2">
+                        <label class="form-label text-secondary mb-1" style="font-size: 0.75rem;">Folder Target</label>
                         <select id="folderSelect" class="form-select">
                             <option value="">-- Pilih Folder Target --</option>
                         </select>
                     </div>
 
-                    <div class="input-group mb-3">
-                        <input type="text" id="prefixInput" class="form-control" placeholder="Prefix (misal: FDI - )">
-                        <input type="number" id="startNumInput" class="form-control" value="1" style="max-width: 60px;" min="0">
-                        <select id="numberFormatSelect" class="form-select" style="max-width: 120px;">
-                            <option value="none">Tanpa Nomor</option>
-                            <option value="001" selected>001</option>
-                            <option value="01">01</option>
-                            <option value="1">1</option>
-                        </select>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label text-secondary mb-1" style="font-size: 0.75rem;">Prefix Nama</label>
+                            <input type="text" id="prefixInput" class="form-control" placeholder="Contoh: ODP-FDI-">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label text-secondary mb-1" style="font-size: 0.75rem;">Format Nomor</label>
+                            <select id="numberFormatSelect" class="form-select">
+                                <option value="001" selected>001, 002...</option>
+                                <option value="01">01, 02...</option>
+                                <option value="1">1, 2...</option>
+                                <option value="none">Tanpa Nomor</option>
+                            </select>
+                        </div>
                     </div>
 
-                    <button class="btn btn-primary w-100 fw-semibold" onclick="applyBatchRename()">
-                        <i class="fa-solid fa-wand-magic-sparkles me-1"></i> Terapkan Penamaan
+                    <div class="mb-3" id="startNumContainer">
+                        <label class="form-label text-secondary mb-1" style="font-size: 0.75rem;">Mulai Urutan Nomor</label>
+                        <input type="number" id="startNumInput" class="form-control" value="1" min="0">
+                    </div>
+
+                    <button class="btn btn-primary w-100 fw-semibold" onclick="applyBatchRename()" style="font-size: 0.85rem;">
+                        <i class="fa-solid fa-wand-magic-sparkles me-1"></i> Terapkan Nama Baru
                     </button>
                 </div>
 
-                <!-- Export CSV Per Folder Section -->
+                <!-- STEP 3: Export CSV Section -->
                 <div class="custom-card">
                     <div class="card-title-sub">
-                        <span><i class="fa-solid fa-file-csv text-success me-1"></i> Export Folder ke CSV</span>
+                        <span><span class="step-tag">3</span> Export Data ke CSV</span>
                     </div>
                     <div class="mb-2">
                         <select id="csvFolderSelect" class="form-select">
@@ -312,29 +336,34 @@
                         </select>
                     </div>
                     
-                    <!-- Tombol CSV Instan / Super Cepat -->
-                    <button class="btn btn-success w-100 fw-semibold mb-2" onclick="exportFolderToCSVFast()">
-                        <i class="fa-solid fa-bolt me-1"></i> Download CSV Instan (Cepat / Lat-Long)
+                    <!-- Fast Export Button -->
+                    <button class="btn btn-success w-100 fw-semibold mb-2" onclick="exportFolderToCSVFast()" style="font-size: 0.85rem;">
+                        <i class="fa-solid fa-bolt me-1"></i> Download CSV Cepat (Instan / Lat-Long)
                     </button>
 
-                    <!-- Tombol CSV Dengan Alamat Lengkap -->
-                    <button id="btnExportCSV" class="btn btn-outline-secondary w-100 fw-semibold" onclick="exportFolderToCSV()">
-                        <i class="fa-solid fa-map-location-dot me-1"></i> Download CSV (+ Alamat Lengkap)
+                    <!-- Full Export Button -->
+                    <button id="btnExportCSV" class="btn btn-outline-secondary w-100 fw-semibold" onclick="exportFolderToCSV()" style="font-size: 0.85rem;">
+                        <i class="fa-solid fa-map-location-dot me-1"></i> Download CSV (+ Alamat Jalan)
                     </button>
-                    <div id="exportStatus" class="mt-2 text-center"></div>
+
+                    <!-- Status & Progress -->
+                    <div id="progressContainer" class="mt-2" style="display: none;">
+                        <div class="progress mb-1">
+                            <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-primary" role="progressbar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div id="exportStatus" class="mt-1 text-center text-secondary" style="font-size: 0.75rem;"></div>
                 </div>
 
-                <!-- Placemark List Output -->
+                <!-- STEP 4: Placemark List View -->
                 <div class="custom-card flex-grow-1" style="overflow-y: auto;">
                     <div class="card-title-sub">
-                        <span><i class="fa-solid fa-list-check me-1"></i> Daftar Penanda (Placemark)</span>
-                        <button class="btn btn-link btn-sm text-danger p-0 text-decoration-none" style="font-size: 0.75rem;" onclick="resetFileWorkspace()">
-                            <i class="fa-solid fa-rotate-left"></i> Reset
-                        </button>
+                        <span><span class="step-tag">4</span> Daftar Penanda (Placemark)</span>
                     </div>
                     <div id="placemarkTree">
-                        <div class="text-center text-secondary py-4" style="font-size: 0.875rem;">
-                            Belum ada file yang diunggah.
+                        <div class="text-center text-secondary py-4" style="font-size: 0.8rem;">
+                            <i class="fa-solid fa-inbox fa-2x mb-2 text-muted"></i><br>
+                            Belum ada data file yang dimuat.
                         </div>
                     </div>
                 </div>
@@ -342,17 +371,16 @@
             </div>
         </div>
 
-        <!-- Map Section -->
+        <!-- Map Panel -->
         <div class="map-container">
             <div id="map"></div>
         </div>
     </div>
 
-    <!-- JavaScript Application Logic -->
+    <!-- JS Logic -->
     <script>
-        // Inisialisasi Peta Leaflet
+        // Inisialisasi Leaflet
         const map = L.map('map', { zoomControl: false }).setView([-2.548926, 118.014863], 5);
-        
         L.control.zoom({ position: 'topright' }).addTo(map);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -366,19 +394,17 @@
         let kmlFileName = "doc.kml";
         let placemarkDataList = [];
 
-        // Enable/Disable Input Angka saat opsi "Tanpa Nomor" dipilih
+        // Toggle input angka jika opsi "Tanpa Nomor" dipilih
         document.getElementById('numberFormatSelect').addEventListener('change', function(e) {
-            const startNumInput = document.getElementById('startNumInput');
+            const container = document.getElementById('startNumContainer');
             if (e.target.value === 'none') {
-                startNumInput.disabled = true;
-                startNumInput.style.opacity = '0.4';
+                container.style.display = 'none';
             } else {
-                startNumInput.disabled = false;
-                startNumInput.style.opacity = '1';
+                container.style.display = 'block';
             }
         });
 
-        // Fitur Hapus/Reset File yang sedang dibuka
+        // Reset Workspace
         function resetFileWorkspace() {
             geojsonGroup.clearLayers();
             parsedKmlDoc = null;
@@ -389,15 +415,17 @@
             document.getElementById('csvFolderSelect').innerHTML = '<option value="">-- Pilih Folder untuk CSV --</option>';
             document.getElementById('prefixInput').value = '';
             document.getElementById('exportStatus').textContent = '';
+            document.getElementById('progressContainer').style.display = 'none';
             document.getElementById('placemarkTree').innerHTML = `
-                <div class="text-center text-secondary py-4" style="font-size: 0.875rem;">
-                    Belum ada file yang diunggah.
+                <div class="text-center text-secondary py-4" style="font-size: 0.8rem;">
+                    <i class="fa-solid fa-inbox fa-2x mb-2 text-muted"></i><br>
+                    Belum ada data file yang dimuat.
                 </div>
             `;
             map.setView([-2.548926, 118.014863], 5);
         }
 
-        // Handle Upload File
+        // Handle File Selection
         async function handleFileSelect(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -442,7 +470,7 @@
             if (folders.length === 0) {
                 const placemarks = parsedKmlDoc.querySelectorAll('Placemark');
                 processPlacemarkNodes(placemarks, "Folder Utama", "folder_0");
-                const optHtml = `<option value="folder_0">Folder Utama (${placemarks.length} penanda)</option>`;
+                const optHtml = `<option value="folder_0">Folder Utama (${placemarks.length} titik)</option>`;
                 folderSelect.innerHTML += optHtml;
                 csvFolderSelect.innerHTML += optHtml;
             } else {
@@ -454,7 +482,7 @@
                     const placemarks = Array.from(folder.children).filter(node => node.tagName === 'Placemark');
                     if (placemarks.length > 0) {
                         processPlacemarkNodes(placemarks, folderName, folderId);
-                        const optHtml = `<option value="${folderId}">${folderName} (${placemarks.length} penanda)</option>`;
+                        const optHtml = `<option value="${folderId}">${folderName} (${placemarks.length} titik)</option>`;
                         folderSelect.innerHTML += optHtml;
                         csvFolderSelect.innerHTML += optHtml;
                     }
@@ -471,7 +499,6 @@
                 const nameNode = pm.querySelector('name');
                 const currentName = nameNode ? nameNode.textContent : `Placemark ${idx + 1}`;
                 
-                // Ambil Koordinat
                 let lat = null, lng = null;
                 const pointNode = pm.querySelector('Point coordinates');
                 if (pointNode) {
@@ -515,7 +542,7 @@
                 const folderHtml = `
                     <div class="folder-header">
                         <span><i class="fa-solid fa-folder text-warning me-1"></i> ${group.name}</span>
-                        <span class="badge-count">${group.items.length}</span>
+                        <span class="badge-count">${group.items.length} titik</span>
                     </div>
                 `;
                 container.innerHTML += folderHtml;
@@ -615,13 +642,12 @@
             }
         }
 
-        // Helper memformat string CSV (mencegah error saat ada tanda koma)
         function cleanCSVField(text) {
             if (!text) return '""';
             return `"${text.toString().replace(/"/g, '""')}"`;
         }
 
-        // 1. OPSI EKSPOR CEPAT / INSTAN (Tanpa Fetch Alamat Online)
+        // Export CSV Instan (Super Cepat)
         function exportFolderToCSVFast() {
             const selectedFolderId = document.getElementById('csvFolderSelect').value;
             if (!selectedFolderId) {
@@ -635,9 +661,7 @@
                 return;
             }
 
-            // Header CSV Sederhana
             let csvContent = "Nama Penanda,Latitude,Longitude\n";
-
             targetItems.forEach(item => {
                 csvContent += `${cleanCSVField(item.name)},${item.lat || ''},${item.lng || ''}\n`;
             });
@@ -646,10 +670,10 @@
             downloadCSV(csvContent, `Export_Fast_${folderName.replace(/\s+/g, '_')}.csv`);
 
             const status = document.getElementById('exportStatus');
-            status.textContent = "Export CSV Instan Selesai!";
+            status.textContent = "✓ Export CSV Instan Berhasil!";
         }
 
-        // 2. OPSI EKSPOR LENGKAP (+ Nama Jalan & Alamat)
+        // Export CSV Lengkap (+ Reverse Geocoding Alamat)
         const delay = ms => new Promise(res => setTimeout(res, ms));
 
         async function getAddressFromCoordinates(lat, lng) {
@@ -714,16 +738,22 @@
 
             const btn = document.getElementById('btnExportCSV');
             const status = document.getElementById('exportStatus');
+            const progressContainer = document.getElementById('progressContainer');
+            const progressBar = document.getElementById('progressBar');
+
             btn.disabled = true;
+            progressContainer.style.display = 'block';
 
             let csvContent = "Nama Penanda,Latitude,Longitude,Jalan,Kelurahan / Desa,Kecamatan,Kota / Kabupaten,Provinsi,Kode Pos,Alamat Lengkap\n";
 
             for (let i = 0; i < targetItems.length; i++) {
                 const item = targetItems[i];
+                const pct = Math.round(((i + 1) / targetItems.length) * 100);
+                
+                progressBar.style.width = `${pct}%`;
                 status.textContent = `Memproses lokasi (${i + 1}/${targetItems.length})...`;
 
                 const addr = await getAddressFromCoordinates(item.lat, item.lng);
-
                 csvContent += `${cleanCSVField(item.name)},${item.lat || ''},${item.lng || ''},${cleanCSVField(addr.road)},${cleanCSVField(addr.subdistrict)},${cleanCSVField(addr.district)},${cleanCSVField(addr.city)},${cleanCSVField(addr.state)},${cleanCSVField(addr.postcode)},${cleanCSVField(addr.full)}\n`;
 
                 if (i < targetItems.length - 1) {
@@ -734,7 +764,7 @@
             const folderName = targetItems[0].folderName || "Folder";
             downloadCSV(csvContent, `Export_Full_${folderName.replace(/\s+/g, '_')}.csv`);
 
-            status.textContent = "Export CSV Selesai!";
+            status.textContent = "✓ Export CSV Lengkap Berhasil!";
             btn.disabled = false;
         }
 
@@ -750,7 +780,7 @@
             document.body.removeChild(link);
         }
 
-        // Export KMZ
+        // Export File KMZ
         async function exportKMZ() {
             if (!parsedKmlDoc) {
                 alert("Tidak ada data KMZ/KML yang diunggah!");
