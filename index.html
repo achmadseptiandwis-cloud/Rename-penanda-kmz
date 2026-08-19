@@ -311,8 +311,15 @@
                             <option value="">-- Pilih Folder untuk CSV --</option>
                         </select>
                     </div>
-                    <button id="btnExportCSV" class="btn btn-outline-success w-100 fw-semibold" onclick="exportFolderToCSV()">
-                        <i class="fa-solid fa-download me-1"></i> Download CSV (Terpisah Kolom Alamat)
+                    
+                    <!-- Tombol CSV Instan / Super Cepat -->
+                    <button class="btn btn-success w-100 fw-semibold mb-2" onclick="exportFolderToCSVFast()">
+                        <i class="fa-solid fa-bolt me-1"></i> Download CSV Instan (Cepat / Lat-Long)
+                    </button>
+
+                    <!-- Tombol CSV Dengan Alamat Lengkap -->
+                    <button id="btnExportCSV" class="btn btn-outline-secondary w-100 fw-semibold" onclick="exportFolderToCSV()">
+                        <i class="fa-solid fa-map-location-dot me-1"></i> Download CSV (+ Alamat Lengkap)
                     </button>
                     <div id="exportStatus" class="mt-2 text-center"></div>
                 </div>
@@ -608,7 +615,41 @@
             }
         }
 
-        // Fitur Export CSV dengan Pemisahan Detail Lokasi & Penanganan Rate-Limit
+        // Helper memformat string CSV (mencegah error saat ada tanda koma)
+        function cleanCSVField(text) {
+            if (!text) return '""';
+            return `"${text.toString().replace(/"/g, '""')}"`;
+        }
+
+        // 1. OPSI EKSPOR CEPAT / INSTAN (Tanpa Fetch Alamat Online)
+        function exportFolderToCSVFast() {
+            const selectedFolderId = document.getElementById('csvFolderSelect').value;
+            if (!selectedFolderId) {
+                alert("Pilih folder yang ingin diexport ke CSV terlebih dahulu!");
+                return;
+            }
+
+            const targetItems = placemarkDataList.filter(item => item.folderId === selectedFolderId);
+            if (targetItems.length === 0) {
+                alert("Folder ini tidak memiliki penanda!");
+                return;
+            }
+
+            // Header CSV Sederhana
+            let csvContent = "Nama Penanda,Latitude,Longitude\n";
+
+            targetItems.forEach(item => {
+                csvContent += `${cleanCSVField(item.name)},${item.lat || ''},${item.lng || ''}\n`;
+            });
+
+            const folderName = targetItems[0].folderName || "Folder";
+            downloadCSV(csvContent, `Export_Fast_${folderName.replace(/\s+/g, '_')}.csv`);
+
+            const status = document.getElementById('exportStatus');
+            status.textContent = "Export CSV Instan Selesai!";
+        }
+
+        // 2. OPSI EKSPOR LENGKAP (+ Nama Jalan & Alamat)
         const delay = ms => new Promise(res => setTimeout(res, ms));
 
         async function getAddressFromCoordinates(lat, lng) {
@@ -631,7 +672,6 @@
                 });
 
                 if (response.status === 429) {
-                    // Jika terkena rate-limit, beri jeda lebih lama dan kembalikan strip
                     await delay(2000);
                     return emptyAddress;
                 }
@@ -641,13 +681,8 @@
                 const data = await response.json();
                 const addr = data.address || {};
 
-                // Mapping nama jalan komprehensif (termasuk jalan desa/setapak)
                 const roadName = addr.road || addr.pedestrian || addr.path || addr.residential || addr.track || addr.service || addr.unclassified || addr.footway || "-";
-
-                // Mapping kecamatan (termasuk township/subdistrict/county)
                 const districtName = addr.township || addr.subdistrict || addr.district || addr.city_district || addr.county || "-";
-
-                // Mapping kelurahan / desa
                 const subdistrictName = addr.village || addr.suburb || addr.neighbourhood || addr.hamlet || addr.quarter || "-";
 
                 return {
@@ -662,12 +697,6 @@
             } catch (error) {
                 return emptyAddress;
             }
-        }
-
-        // Helper memformat string CSV (mencegah error saat ada tanda koma)
-        function cleanCSVField(text) {
-            if (!text) return '""';
-            return `"${text.toString().replace(/"/g, '""')}"`;
         }
 
         async function exportFolderToCSV() {
@@ -687,7 +716,6 @@
             const status = document.getElementById('exportStatus');
             btn.disabled = true;
 
-            // Header CSV Terpisah Per Kolom
             let csvContent = "Nama Penanda,Latitude,Longitude,Jalan,Kelurahan / Desa,Kecamatan,Kota / Kabupaten,Provinsi,Kode Pos,Alamat Lengkap\n";
 
             for (let i = 0; i < targetItems.length; i++) {
@@ -696,16 +724,15 @@
 
                 const addr = await getAddressFromCoordinates(item.lat, item.lng);
 
-                // Gabungkan baris data CSV
                 csvContent += `${cleanCSVField(item.name)},${item.lat || ''},${item.lng || ''},${cleanCSVField(addr.road)},${cleanCSVField(addr.subdistrict)},${cleanCSVField(addr.district)},${cleanCSVField(addr.city)},${cleanCSVField(addr.state)},${cleanCSVField(addr.postcode)},${cleanCSVField(addr.full)}\n`;
 
                 if (i < targetItems.length - 1) {
-                    await delay(1000); // Set ke 1000ms untuk mematuhi batas rate limit OSM Nominatim
+                    await delay(1000);
                 }
             }
 
             const folderName = targetItems[0].folderName || "Folder";
-            downloadCSV(csvContent, `Export_${folderName.replace(/\s+/g, '_')}.csv`);
+            downloadCSV(csvContent, `Export_Full_${folderName.replace(/\s+/g, '_')}.csv`);
 
             status.textContent = "Export CSV Selesai!";
             btn.disabled = false;
